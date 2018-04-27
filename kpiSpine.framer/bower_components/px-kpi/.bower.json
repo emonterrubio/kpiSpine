@@ -1,0 +1,39 @@
+{
+  "name": "px-kpi",
+  "version": "1.0.0",
+  "main": [
+    "px-kpi.html"
+  ],
+  "ignore": [
+    ".*",
+    "npm-debug.log",
+    "gulpfile.js",
+    "sass",
+    "bower_components",
+    "node_modules",
+    "test"
+  ],
+  "dependencies": {
+    "polymer": "^1.6.1",
+    "px-theme": "^2.0.1",
+    "px-headings-design": "^0.3.0",
+    "px-list-ui-design": "^1.1.0",
+    "px-vis-spark": "^1.0.0",
+    "px-polymer-font-awesome": "^1.1.0"
+  },
+  "devDependencies": {
+    "px-starter-kit-design": "^0.7.0",
+    "px-demo": "^1.4.5"
+  },
+  "homepage": "https://github.com/PredixDev/px-kpi",
+  "_release": "1.0.0",
+  "_resolution": {
+    "type": "version",
+    "tag": "v1.0.0",
+    "commit": "263f80ccf9c3417c795da9436f9e84bc58040b3e"
+  },
+  "_source": "https://github.com/PredixDev/px-kpi.git",
+  "_target": "^1.0.0",
+  "_originalSource": "px-kpi",
+  "_direct": true
+}

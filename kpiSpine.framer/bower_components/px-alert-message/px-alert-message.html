@@ -1,0 +1,342 @@
+<!--
+    Relative paths assume component is being run from inside an app or another component, where dependencies are flat
+    siblings. When this component is run from its own repo (e.g. ui tests, examples), we assume the server is started with
+    'grunt depserve' (or similar server setup) to enable correct finding of bower dependencies for local runs
+    See https://github.com/jreichenberg/grunt-dep-serve#why-do-we-need-this
+-->
+<link rel="import" href="../polymer/polymer.html"/>
+<link rel="import" href="../px-polymer-font-awesome/polymer-font-awesome.html"/>
+<link rel="import" href="../px-localize-behavior/px-localize-behavior.html">
+<!--
+
+### Usage
+
+    <px-alert-message
+        type="important"
+        message-title="Heads up!"
+        message="This definitely needs our attention."
+        action="https://www.predix.io/"
+        auto-dismiss="5000"
+        language="en">
+    </px-alert-message>
+
+### Styling
+The following custom properties are available for styling:
+
+Custom property | Description | Default
+----------------|-------------|----------
+`--px-alert-message-background-color` | Background color for the alert message | `$gray3`
+`--px-alert-message-icon-outline-color` | Color of the alert icon outline | `$white`
+`--px-alert-message-icon-text-color` | Color of the alert icon numeric text | `$white`
+`--px-alert-message-alert-color` | Background color for priority 1 alert icons | `$alert-red`
+`--px-alert-message-warning-color` | Background color for priority 2 alert icons | `$alert-orange`
+`--px-alert-message-error-color` | Background color for priority 3 alert icons | `$alert-yellow`
+`--px-alert-message-info-color` | Background color for priority 4 alert icons | `$alert-blue`
+`--px-alert-message-dismiss-icon-color` | Color of the dismiss icon | `$gray6`
+
+@element px-alert-message
+@blurb Element providing solution to no problem in particular.
+@homepage index.html
+@demo demo.html
+-->
+
+<link rel="import" href="css/px-alert-message-styles.html">
+
+<dom-module id="px-alert-message">
+  <template>
+    <style include="px-alert-message-styles"></style>
+
+    <div id="alert" class="alert-message flex flex--left flex--middle">
+      <template is="dom-if" if="{{ !_isTrue(type, 'more') }}">
+        <div class="severity">
+          <div id="icon" class$="{{ type }}">
+            <template is="dom-if" if="{{ !_isTrue(type, 'custom') }}">
+              <div class="svg-canvas">
+                <!-- Added "important" ico, only svg icon-->
+                <svg xmlns="http://www.w3.org/2000/svg" version="1.1" class="svg-triangle">
+                  <polygon points="0,27 15,0 30,27"/>
+                </svg>
+              </div>
+              <span class="number"></span>
+            </template>
+            <template is="dom-if" if="{{ _isTrue(type, 'custom') }}">
+              <content></content>
+            </template>
+          </div>
+        </div>
+      </template>
+      <div class="messageColumn flex--column">
+        <div class$="{{type}} message collapsedMessage" id="message">
+          <span>{{ messageTitle }}</span>
+          <span>{{ message }}</span>
+        </div>
+        <span id="showMoreButton" class="actionable visuallyhidden">{{localize(_showBtnText)}}</span>
+      </div>
+      <template is="dom-if" if="{{ action }}">
+        <div class="action">
+          <template is="dom-if" if="{{ _isTrue(action, 'dismiss') }}">
+            <button class="btn btn--bare dismiss" on-click="_dismiss">
+              <iron-icon icon="fa:fa-times"></iron-icon>
+            </button>
+          </template>
+          <template is="dom-if" if="{{ !_isTrue(action, 'dismiss') }}">
+            <button class="btn" on-click="_action">{{localize(_actionText)}}</button>
+          </template>
+        </div>
+      </template>
+
+    </div>
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+
+    is: 'px-alert-message',
+    /**
+    * Use extension of app-localize-behavior to implement localization.
+    */
+    behaviors: [
+      PxLocalizeBehavior
+    ],
+    /**
+     * Properties block, expose attribute values to the DOM via 'reflect'
+     *
+     * @property properties
+     * @type Object
+     */
+    properties: {
+    /**
+     * The currently selected language (chosen from a dropdown menu). See px-localize-behavior for available languages.
+     *
+     * Note: selected language does not affect the message text itself.
+     * @type String
+     * @default "en"
+     */
+    language: {
+      value: 'en',
+      type: String
+    },
+    /**
+    * Defines the alert level, reflected in the icon:
+    * - 'important' - red triangle labeled 1
+    * - 'warning'- orange diamond labeled 2
+    * - 'error' - yellow square labeled 3
+    * - 'information' - blue circle labeled 4
+    * - 'custom' - allows a developer to specify HTML including images in place of the icon
+    * - 'more' - allows for a message indicating that there are more messages in the queue. See https://www.predix-ui.com/px-alert-message/px-alert-message/demo.html for an example
+    *
+    * @default information
+    *
+    */
+    type: {
+      type: String,
+      reflect: true,
+      value: 'information'
+    },
+    /**
+    * The title of the message, displayed in bold.
+    *
+    */
+    messageTitle: {
+      type: String,
+      reflect: true,
+      observer: '_checkMessageLength'
+    },
+    /**
+    * The message body.
+    *
+    */
+    message: {
+      type: String,
+      observer: '_checkMessageLength'
+    },
+    /**
+    * Automatically dismisses the alert message after a specified amount of time.
+    *
+    * Unit: milliseconds
+    *
+    */
+    autoDismiss: {
+      type: Number,
+      reflect: true,
+      observer: 'setAutoDismiss'
+    },
+    /**
+    * User interaction on the right hand side of the message box:
+    * - 'dismiss' - displays (x) to dismiss
+    * - 'acknowledge' - displays (OK) to dismiss
+    * - 'URL' - string containing http url to be opened, displays (Open).
+    */
+    action: {
+      type: String,
+      reflect: true
+    },
+    /**
+    * An object to store ID of timer in order to clear.
+    * @type Object
+    */
+    _timeouts: {
+      type: Object,
+      value: function() {
+        return {};
+      }
+    },
+    /**
+    * computed property. Displays the value of _setActionText() inside the action button
+    * @private
+    */
+    _actionText: {
+      type: String,
+      computed: '_setActionText(action)'
+    },
+    /**
+    * stores the value to be displayed in the show more action text
+    * @type String
+    */
+    _showBtnText: {
+      type: String,
+      value: "Show More"
+    },
+    /**
+     * checks whether the _showMore() if false or _showLess() if true functions are called.
+     * @type Boolean
+     * @default false
+     */
+    _expandText: {
+      type: Boolean,
+      value: false
+    }
+  },
+  attached: function() {
+    this.listen(this, 'animationend', '_hide');
+    this.listen(this, 'app-localize-resources-loaded', '_checkMessageLength');
+    this._checkMessageLength();
+    this.listen(this.$.showMoreButton, 'tap', '_toggleExpansion');
+  },
+  detached: function() {
+    this.unlisten(this, 'animationend', '_hide');
+    this.unlisten(this, 'app-localize-resources-loaded', '_checkMessageLength');
+    this.unlisten(this.$.showMoreButton, 'tap', '_toggleExpansion');
+  },
+  /**
+   * Clear timer if needed and set the time to the autoDismiss property
+   *
+   */
+  setAutoDismiss: function(dismissAfter) {
+    this._show();
+    // if timer is set already, clear it
+    if (this._timeouts) {
+      clearTimeout(this._timeouts);
+      this._timeouts = {};
+    }
+    if (dismissAfter > 0) {
+      // store ID value of timer in order to clear later
+      this.set('_timeouts', setTimeout(function() {
+        this._dismiss();
+      }.bind(this), dismissAfter));
+    }
+  },
+  /**
+   * helper method for calculating dom-if conditions
+   */
+  _isTrue: function(a, b) {
+    return a === b;
+  },
+  /**
+   * add fade-out class to this.$.alert
+   *
+   */
+  _dismiss: function() {
+    this.$.alert.classList.add('fade-out');
+  },
+  /**
+   * add hidden class to event.target
+   *
+   */
+  _hide: function(event) {
+    if (event.target.classList.contains('fade-out')) {
+      event.target.classList.add('hidden');
+      this.fire('px-alert-message-hidden');
+    }
+  },
+  /**
+   * remove fade-out and hidden class from this.$.alert
+   *
+   */
+  _show: function() {
+    this.$.alert.classList.remove('fade-out');
+    this.$.alert.classList.remove('hidden');
+  },
+  /**
+   * called when the 'show more' action text is clicked
+   *
+   */
+  _toggleExpansion: function() {
+    this._expandText = !this._expandText;
+    if (this._expandText) {
+      this._showMore();
+    } else {
+      this._showLess();
+    }
+  },
+  /**
+   * Checking to see if the combined message length of title and message exceed the max height of the parent div.
+   */
+  _checkMessageLength: function() {
+    var messageDiv = this.$.message;
+
+    if(this.type === 'more') {
+      return;
+    }
+    if(messageDiv.scrollHeight <= messageDiv.clientHeight) {
+      this.toggleClass('visuallyhidden', true, this.$.showMoreButton);
+      messageDiv.style.marginBottom = '0';
+    }
+    else {
+      this.toggleClass('visuallyhidden', false, this.$.showMoreButton);
+      messageDiv.style.marginBottom = '5px';
+    }
+  },
+  /**
+   * run when 'show more' button is clicked to show full message
+   */
+  _showMore: function() {
+    this._showBtnText = 'Show Less';
+    this.toggleClass('collapsedMessage', false, this.$.message);
+  },
+  /**
+   * run when 'show less' button is clicked to truncate message again
+   */
+  _showLess: function() {
+    this._showBtnText = 'Show More';
+    this.toggleClass('collapsedMessage', true, this.$.message);
+  },
+  /**
+   * run when 'actionText' is clicked.
+   * If action property is a URL then open it.
+   * Else dismiss the alert message
+   */
+  _action: function() {
+    if (this.action.indexOf('http') != -1) {
+      window.open(this.action);
+    } else if (this.action === 'dismiss' || this.action === 'acknowledge') {
+      this._dismiss();
+    }
+  },
+  /**
+   * Sets the text of action buttons based on what the action property is
+   *
+   */
+  _setActionText: function(action) {
+    if (action === 'acknowledge') {
+      return 'OK';
+    } else if (action.indexOf('http') != -1) {
+      return 'Open';
+    } else {
+      return ''; // future custom button actions
+    }
+  }
+
+});
+</script>

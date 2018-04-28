@@ -6,7 +6,7 @@ Framer prototype works on Chrome, Firefox and Safari
 
 <a href="https://framer.cloud/EpWvs" target="_blank">Launch Prototype</a>
 
-## Component Description:
+## Description:
 This UI component is used for displaying KPIs in a dashboard layout. KPIs may be displayed as a tile with one large number or value.
 
 ## Objective:

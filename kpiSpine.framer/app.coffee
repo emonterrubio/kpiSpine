@@ -1,6 +1,11 @@
-document.body.style.cursor = "auto"
+# ----------- METADATA ----------- #
+Framer.info =
+	title: "Intellistream KPI Spine Widget"
+	author: "Ed Monterrubio"
+	date: "05/26/2017"
+	description: "GE Intellistream Dynamic KPI Spine Widget"
 
-#### px-spinner
+# ----------- PX-SPINNER ----------- #
 spinnerLoad = ->
 	spinner = new Layer
 		backgroundColor: null
